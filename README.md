@@ -1,2 +1,2 @@
-# sorting-hat
-a Harry Potter themed magical slackbot
+✨ Sorting Hat
+A magical Harry Potter themed Slackbot!
