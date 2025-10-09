@@ -6,8 +6,11 @@ from dotenv import load_dotenv
 from pathlib import Path
 from flask import Flask, Response, request
 from slackeventsapi import SlackEventAdapter
+from slack_sdk.errors import SlackApiError
 
 # note to self: ngrok http 5000
+
+# setup stuff:
 
 env_path = Path('.') / '.env'
 load_dotenv(dotenv_path=env_path)
@@ -19,6 +22,19 @@ slack_event_adapter = SlackEventAdapter(
 client = slack.WebClient(token=os.environ['SLACK_TOKEN'])
 BOT_ID = client.api_call("auth.test")['user_id']
 
+
+# functions section
+def get_username(user_id):
+    try:
+        response = client.users_info(user=user_id)
+        return response['user']['profile']['display_name']  # or ['real_name'], ['profile']['display_name']
+    except SlackApiError as e:
+        print(f"Error fetching username: {e.response['error']}")
+        return None
+
+
+
+# actual code starts here
 @app.route('/sortme', methods=['POST'])
 def sortme():
     house = random.randint(1,4)
@@ -28,12 +44,14 @@ def sortme():
         3: "Ravenclaw 💙",
         4: "Slytherin 💚",
     }
-    text = "You are in... " + switcher.get(house) + "!"
+    text = ", you are in... " + switcher.get(house) + "!"
 
     data = request.form
-    print(data)
+    user_id = data.get('user_id')
+    print(get_username(user_id=user_id))
     channel_id = data.get('channel_id')
-    client.chat_postMessage(channel=channel_id, text=text)
+    print(f"<@{get_username(user_id)}>" + text)
+    # client.chat_postMessage(channel=channel_id, text=f"<@{sortme['user_id']}>" + text)
     return Response(), 200
 
 @slack_event_adapter.on('message')
