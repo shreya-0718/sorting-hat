@@ -67,33 +67,44 @@ blocks = [
 ]
 
 def add_user_to_house(user_id, house):
-
     group_id = HOUSE_GROUP_IDS.get(house)
     if not group_id:
-        print(f"No group ID found for house: {house}")
+        print(f"no group id for: {house}")
         return
 
     try:
-        # Get current users in the group
+        # remove from other houses
+        for other_house, other_group_id in HOUSE_GROUP_IDS.items():
+            if other_house != house:
+                response = client.usergroups_users_list(usergroup=other_group_id)
+                current_users = response["users"] # users in that group
+                if user_id in current_users:
+                    updated_users = [u for u in current_users if u != user_id] # every user except the user we wanna remove
+                    client.usergroups_users_update(
+                        usergroup=other_group_id,
+                        users=",".join(updated_users)
+                    )
+                    print(f"Removed {user_id} from {other_house}")
+
+        # add user to their house
         response = client.usergroups_users_list(usergroup=group_id)
         current_users = response["users"]
-
-        # Add new user if not already in the group
         if user_id not in current_users:
             updated_users = current_users + [user_id]
             client.usergroups_users_update(
                 usergroup=group_id,
                 users=",".join(updated_users)
             )
-            print(f"Added {user_id} to {house} group.")
+            print(f"added {user_id} to {house}.")
+
     except SlackApiError as e:
-        print(f"Error adding user to group: {e.response['error']}")
+        print(f"error {e.response['error']}")
 
 def send_house_buttons(channel_id, user_id):
-    print(f"Sending to channel: {channel_id}, user: {user_id}")
+    print(f"channel and id: {channel_id}, user: {user_id}") 
 
     client.chat_postEphemeral(
-        channel=channel_id,
+        channel=channel_id, 
         user=user_id,
         blocks=blocks,
         text="Choose your house!"
