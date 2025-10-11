@@ -5,6 +5,8 @@ from core import client, env_path
 from dotenv import load_dotenv
 from pathlib import Path
 
+from db import get_user_points
+
 env_path = Path('.') / '.env'
 load_dotenv(dotenv_path=env_path)
 
@@ -15,7 +17,7 @@ HOUSE_GROUP_IDS = {
     "slytherin": os.environ.get("SLYTHERIN_GROUP_ID")
 }
 
-blocks = [
+choose_house = [
     {
         "type": "section",
         "text": {
@@ -106,6 +108,15 @@ def send_house_buttons(channel_id, user_id):
     client.chat_postEphemeral(
         channel=channel_id, 
         user=user_id,
-        blocks=blocks,
+        blocks=choose_house,
         text="Choose your house!"
+    )
+
+def own_points(channel_id, user_id):
+    print(f"sending own points to user: {user_id}")
+
+    client.chat_postEphemeral(
+        channel=channel_id,
+        user=user_id,
+        text=f"You have earned {get_user_points(user_id)} points!"
     )

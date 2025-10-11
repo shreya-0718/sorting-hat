@@ -11,7 +11,7 @@ import threading
 
 from core import env_path, client, slack_event_adapter, app, BOT_ID
 from db import init_db, assign_to_house, print_all_assignments
-from hogwarts import send_house_buttons, add_user_to_house
+from hogwarts import send_house_buttons, add_user_to_house, own_points
 
 # note to self: ngrok http 5000
 
@@ -40,6 +40,14 @@ def sortme():
     threading.Thread(target=send_house_buttons, args=(channel_id, user_id)).start()
     return Response(), 200
 
+@app.route('/my-points', methods=['POST'])
+def my_points():
+    data = request.form
+    user_id = data.get('user_id')
+    channel_id = data.get('channel_id')
+
+    threading.Thread(target=own_points, args=(channel_id, user_id)).start()
+    return Response(), 200
 
 @slack_event_adapter.on('message')
 def message(payLoad):
