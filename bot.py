@@ -11,7 +11,7 @@ import threading
 
 from core import env_path, client, slack_event_adapter, app, BOT_ID
 from db import init_db, assign_to_house, print_all_assignments
-from hogwarts import send_house_buttons
+from hogwarts import send_house_buttons, add_user_to_house
 
 # note to self: ngrok http 5000
 
@@ -82,9 +82,10 @@ def handle_block_actions(payload):
         text=f"You’ve been sorted into *{house.title()}*! Welcome to your house!"
     )
 
+    add_user_to_house(user_id, house)
     print_all_assignments()
 
-    
+
     return "", 200
 
 if __name__ == "__main__": 

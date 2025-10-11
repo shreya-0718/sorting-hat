@@ -66,7 +66,7 @@ blocks = [
     }
 ]
 
-def add_user_to_house_group(user_id, house):
+def add_user_to_house(user_id, house):
 
     group_id = HOUSE_GROUP_IDS.get(house)
     if not group_id:
