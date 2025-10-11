@@ -10,7 +10,7 @@ from slack_sdk.errors import SlackApiError
 import threading
 
 from core import env_path, client, slack_event_adapter, app, BOT_ID
-from db import init_db, assign_to_house
+from db import init_db, assign_to_house, print_all_assignments
 from hogwarts import send_house_buttons
 
 # note to self: ngrok http 5000
@@ -68,18 +68,10 @@ def handle_interactions():
     
 def handle_block_actions(payload):
     action = payload["actions"][0]
-    action_id = action["action_id"]
-    block_id = action.get("block_id")
+    value = action["value"]  
     channel_id = payload["channel"]["id"]
     user_id = payload["user"]["id"]
-    value = action.get("value")  # "gryffindor_choice"
 
-    if action_id == "choose_house" and block_id == "house_buttons":
-        return handle_house_choice(channel_id, user_id, value)
-
-    return "", 200
-
-def handle_house_choice(channel_id, user_id, value):
     house = value.replace("_choice", "")  
     
     assign_to_house(user_id, house)
@@ -89,8 +81,11 @@ def handle_house_choice(channel_id, user_id, value):
         user = user_id,
         text=f"You’ve been sorted into *{house.title()}*! Welcome to your house!"
     )
-    return "", 200
 
+    print_all_assignments()
+
+    
+    return "", 200
 
 if __name__ == "__main__": 
     app.run(debug=True)

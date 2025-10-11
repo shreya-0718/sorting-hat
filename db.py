@@ -17,6 +17,12 @@ def init_db():
     conn.close()
 
 
+"""
+    note to self, the database is being assigned like so:
+    (user_id, house, points)
+    the house is in lowercase!
+"""
+
 def assign_to_house(user_id, house):
     conn = sqlite3.connect("hogwarts.db")
     cursor = conn.cursor()
@@ -29,3 +35,15 @@ def assign_to_house(user_id, house):
 
     conn.commit()
     conn.close()
+
+
+def print_all_assignments():
+    conn = sqlite3.connect("hogwarts.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users")
+    rows = cursor.fetchall()
+    conn.close()
+
+    print("all current students:") # for my own sake haha
+    for row in rows:
+        print(row)
