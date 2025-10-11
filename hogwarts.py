@@ -5,7 +5,7 @@ from core import client, env_path
 from dotenv import load_dotenv
 from pathlib import Path
 
-from db import get_user_points
+from db import get_user_points, get_user_house, get_house_points
 
 env_path = Path('.') / '.env'
 load_dotenv(dotenv_path=env_path)
@@ -75,19 +75,6 @@ def add_user_to_house(user_id, house):
         return
 
     try:
-        # remove from other houses
-        for other_house, other_group_id in HOUSE_GROUP_IDS.items():
-            if other_house != house:
-                response = client.usergroups_users_list(usergroup=other_group_id)
-                current_users = response["users"] # users in that group
-                if user_id in current_users:
-                    updated_users = [u for u in current_users if u != user_id] # every user except the user we wanna remove
-                    client.usergroups_users_update(
-                        usergroup=other_group_id,
-                        users=",".join(updated_users)
-                    )
-                    print(f"Removed {user_id} from {other_house}")
-
         # add user to their house
         response = client.usergroups_users_list(usergroup=group_id)
         current_users = response["users"]
@@ -119,4 +106,13 @@ def own_points(channel_id, user_id):
         channel=channel_id,
         user=user_id,
         text=f"You have earned {get_user_points(user_id)} points!"
+    )
+
+def house_points(channel_id, user_id):
+    print(f"sending house points to user: {user_id}")
+
+    client.chat_postEphemeral(
+        channel=channel_id,
+        user=user_id,
+        text=f"Your house, {get_user_house(user_id).title()}, has {get_house_points(user_id)} house points!"
     )

@@ -10,8 +10,9 @@ from slack_sdk.errors import SlackApiError
 import threading
 
 from core import env_path, client, slack_event_adapter, app, BOT_ID
-from db import init_db, assign_to_house, print_all_assignments
-from hogwarts import send_house_buttons, add_user_to_house, own_points
+from db import init_db, assign_to_house, print_all_assignments, get_user_house
+from hogwarts import send_house_buttons, add_user_to_house, own_points, house_points
+import requests
 
 # note to self: ngrok http 5000
 
@@ -27,6 +28,12 @@ def get_username(user_id):
     except SlackApiError as e:
         print(f"Error fetching username: {e.response['error']}")
         return None 
+    
+def delete_buttons(response_url, house):
+    requests.post(response_url, json={
+        "replace_original": True,
+        "text": f"You’ve been sorted into *{house.title()}*! Welcome to your house!"
+    })
 
 
 # actual code starts here
@@ -36,7 +43,15 @@ def sortme():
     user_id = data.get('user_id')
     channel_id = data.get('channel_id')
 
-    # Respond immediately to avoid timeout
+    existing_house = get_user_house(user_id)
+    if existing_house and not existing_house.startswith("("):
+        client.chat_postEphemeral(
+            channel=channel_id,
+            user=user_id,
+            text=f"You’ve already been sorted into *{existing_house.title()}*!"
+        )
+        return "", 200
+
     threading.Thread(target=send_house_buttons, args=(channel_id, user_id)).start()
     return Response(), 200
 
@@ -47,6 +62,15 @@ def my_points():
     channel_id = data.get('channel_id')
 
     threading.Thread(target=own_points, args=(channel_id, user_id)).start()
+    return Response(), 200
+
+@app.route('/house-points', methods=['POST'])
+def housepoints():
+    data = request.form
+    user_id = data.get('user_id')
+    channel_id = data.get('channel_id')
+
+    threading.Thread(target=house_points, args=(channel_id, user_id)).start()
     return Response(), 200
 
 @slack_event_adapter.on('message')
@@ -79,20 +103,15 @@ def handle_block_actions(payload):
     value = action["value"]  
     channel_id = payload["channel"]["id"]
     user_id = payload["user"]["id"]
+    response_url = payload.get("response_url")
 
-    house = value.replace("_choice", "")  
+    house = value.replace("_choice", "") 
     
     assign_to_house(user_id, house)
 
-    client.chat_postEphemeral(
-        channel= channel_id,
-        user = user_id,
-        text=f"You’ve been sorted into *{house.title()}*! Welcome to your house!"
-    )
-
     add_user_to_house(user_id, house)
     print_all_assignments()
-
+    delete_buttons(response_url, house)
 
     return "", 200
 
