@@ -6,26 +6,18 @@ import json
 from dotenv import load_dotenv
 from pathlib import Path
 from flask import Flask, Response, request
-from slackeventsapi import SlackEventAdapter
 from slack_sdk.errors import SlackApiError
+import threading
 
+from core import env_path, client, slack_event_adapter, app, BOT_ID
 from db import init_db, assign_to_house
+from hogwarts import send_house_buttons
 
 # note to self: ngrok http 5000
 
 # setup stuff:
 
 init_db()
-
-env_path = Path('.') / '.env'
-load_dotenv(dotenv_path=env_path)
-
-app = Flask(__name__)
-slack_event_adapter = SlackEventAdapter(
-    os.environ['SIGNING_SECRET'],'/slack/events',app)
-
-client = slack.WebClient(token=os.environ['SLACK_TOKEN'])
-BOT_ID = client.api_call("auth.test")['user_id']
 
 # functions section
 def get_username(user_id):
@@ -42,52 +34,12 @@ def get_username(user_id):
 def sortme():
     data = request.form
     user_id = data.get('user_id')
-    print(get_username(user_id=user_id))
     channel_id = data.get('channel_id')
 
-    client.chat_postEphemeral( # sends the msg of picking the house
-        channel=channel_id,
-        user=user_id,
-        blocks=[
-            {
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": "*Choose your Hogwarts house:*"}
-            },
-            {
-                "type": "actions",
-                "block_id": "house_buttons",
-                "elements": [
-                    {
-                        "type": "button",
-                        "text": {"type": "plain_text", "text": "Gryffindor ❤️"},
-                        "value": "gryffindor_choice",
-                        "action_id": "choose_house"
-                    },
-                    {
-                        "type": "button",
-                        "text": {"type": "plain_text", "text": "Hufflepuff 💛"},
-                        "value": "hufflepuff_choice",
-                        "action_id": "choose_house"
-                    },
-                    {
-                        "type": "button",
-                        "text": {"type": "plain_text", "text": "Ravenclaw 💙"},
-                        "value": "ravenclaw_choice",
-                        "action_id": "choose_house"
-                    },
-                    {
-                        "type": "button",
-                        "text": {"type": "plain_text", "text": "Slytherin 💚"},
-                        "value": "slytherin_choice",
-                        "action_id": "choose_house"
-                    }
-                ]
-            }
-        ],
-        text="Choose your house!",
-    )
-    # client.chat_postMessage(channel=channel_id, text=f"<@{get_username(user_id)}>" + text)
+    # Respond immediately to avoid timeout
+    threading.Thread(target=send_house_buttons, args=(channel_id, user_id)).start()
     return Response(), 200
+
 
 @slack_event_adapter.on('message')
 def message(payLoad):
@@ -134,7 +86,7 @@ def handle_house_choice(channel_id, user_id, value):
 
     client.chat_postEphemeral(
         channel= channel_id,
-        user_id = user_id,
+        user = user_id,
         text=f"You’ve been sorted into *{house.title()}*! Welcome to your house!"
     )
     return "", 200
