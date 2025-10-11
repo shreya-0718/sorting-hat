@@ -139,4 +139,11 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+#stuff i added
+.env
+hogwarts.db
+ngrok.exe
+__pycache__/
+*.pyc
+
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Python
