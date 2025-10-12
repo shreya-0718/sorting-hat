@@ -11,7 +11,7 @@ import threading
 
 from core import env_path, client, slack_event_adapter, app, BOT_ID
 from db import init_db, assign_to_house, print_all_assignments, get_user_house
-from hogwarts import send_house_buttons, add_user_to_house, own_points, house_points
+from hogwarts import send_house_buttons, add_user_to_house, own_points, house_points, send_leaderboard
 import requests
 
 # note to self: ngrok http 5000
@@ -26,7 +26,7 @@ def get_username(user_id):
         response = client.users_info(user=user_id)
         return response['user']['profile']['display_name'] 
     except SlackApiError as e:
-        print(f"Error fetching username: {e.response['error']}")
+        print(f"error fetching username: {e.response['error']}")
         return None 
     
 def delete_buttons(response_url, house):
@@ -34,7 +34,6 @@ def delete_buttons(response_url, house):
         "replace_original": True,
         "text": f"You’ve been sorted into *{house.title()}*! Welcome to your house!"
     })
-
 
 # actual code starts here
 @app.route('/sortme', methods=['POST'])
@@ -65,6 +64,24 @@ def my_points():
     return Response(), 200
 
 @app.route('/house-points', methods=['POST'])
+def house_points():
+    data = request.form
+    user_id = data.get('user_id')
+    channel_id = data.get('channel_id')
+
+    threading.Thread(target=house_points, args=(channel_id, user_id)).start()
+    return Response(), 200
+
+@app.route('/hogwarts-leaderboard', methods=['POST'])
+def hogwartsleaderboard():
+    data = request.form
+    user_id = data.get('user_id')
+    channel_id = data.get('channel_id')
+
+    threading.Thread(target=send_leaderboard, args=(channel_id,)).start()
+    return Response(), 200
+
+@app.route('/house-points', methods=['POST'])
 def housepoints():
     data = request.form
     user_id = data.get('user_id')
@@ -73,6 +90,7 @@ def housepoints():
     threading.Thread(target=house_points, args=(channel_id, user_id)).start()
     return Response(), 200
 
+"""
 @slack_event_adapter.on('message')
 def message(payLoad):
     event = payLoad.get('event', {})
@@ -84,6 +102,7 @@ def message(payLoad):
 
     if BOT_ID != user_id:
         client.chat_postMessage(channel=channel_id, text=text) # error before: private channel so groups not channel
+"""
 
 @app.route('/slack/interactions', methods=['POST'])
 def handle_interactions():
@@ -117,4 +136,3 @@ def handle_block_actions(payload):
 
 if __name__ == "__main__": 
     app.run(debug=True)
-

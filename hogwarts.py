@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 from db import get_user_points, get_user_house, get_house_points
+from datetime import datetime, timedelta
+import threading, time
 
 env_path = Path('.') / '.env'
 load_dotenv(dotenv_path=env_path)
@@ -68,6 +70,23 @@ choose_house = [
     }
 ]
 
+leaderboard = [
+    {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": "*HOUSE POINTS LEADERBOARD!*"
+        }
+    },
+    {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": f"Gryffindor: {get_house_points('gryffindor')} \nHufflepuff: {get_house_points('hufflepuff')} \nRavenclaw: {get_house_points('ravenclaw')} \nSlytherin: {get_house_points('slytherin')}"
+        }
+    }
+]
+
 def add_user_to_house(user_id, house):
     group_id = HOUSE_GROUP_IDS.get(house)
     if not group_id:
@@ -114,5 +133,13 @@ def house_points(channel_id, user_id):
     client.chat_postEphemeral(
         channel=channel_id,
         user=user_id,
-        text=f"Your house, {get_user_house(user_id).title()}, has {get_house_points(user_id)} house points!"
+        text=f"Your house, {get_user_house(user_id).title()}, has {get_house_points(get_user_house(user_id))} house points!"
     )
+
+def send_leaderboard(channel_id):
+    print(f"sending leaderboard to {channel_id}")
+
+    response = client.chat_postMessage(channel=channel_id, blocks=leaderboard)
+    ts = response["ts"] # timestamp :P
+    time.sleep(30)
+    client.chat_delete(channel=channel_id, ts=ts) # delete leaderboard msg after 30 secs :O

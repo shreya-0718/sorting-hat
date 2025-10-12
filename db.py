@@ -72,8 +72,7 @@ def get_user_house(user_id):
     else:
         return "(house could not be found sorry)"
     
-def get_house_points(user_id):
-    house = get_user_house(user_id)
+def get_house_points(house):
     if house.startswith("("):
         print(f"could not find house for user {user_id}")
         return "N/A"
@@ -84,4 +83,4 @@ def get_house_points(user_id):
     result = cursor.fetchone()
     conn.close()
 
-    return result[0]
+    return result[0] or 0
