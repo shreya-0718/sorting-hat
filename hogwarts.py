@@ -5,9 +5,11 @@ from core import client, env_path
 from dotenv import load_dotenv
 from pathlib import Path
 
-from db import get_user_points, get_user_house, get_house_points
+from db import get_user_points, get_user_house, get_house_points, get_quiz, get_quiz_row
 from datetime import datetime, timedelta
 import threading, time
+
+import html, random
 
 env_path = Path('.') / '.env'
 load_dotenv(dotenv_path=env_path)
@@ -70,23 +72,6 @@ choose_house = [
     }
 ]
 
-leaderboard = [
-    {
-        "type": "section",
-        "text": {
-            "type": "mrkdwn",
-            "text": "*HOUSE POINTS LEADERBOARD!*"
-        }
-    },
-    {
-        "type": "section",
-        "text": {
-            "type": "mrkdwn",
-            "text": f"Gryffindor: {get_house_points('gryffindor')} \nHufflepuff: {get_house_points('hufflepuff')} \nRavenclaw: {get_house_points('ravenclaw')} \nSlytherin: {get_house_points('slytherin')}"
-        }
-    }
-]
-
 def add_user_to_house(user_id, house):
     group_id = HOUSE_GROUP_IDS.get(house)
     if not group_id:
@@ -139,7 +124,124 @@ def house_points(channel_id, user_id):
 def send_leaderboard(channel_id):
     print(f"sending leaderboard to {channel_id}")
 
+    leaderboard = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "*HOUSE POINTS LEADERBOARD!*"
+            }
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"Gryffindor: {get_house_points('gryffindor')} \nHufflepuff: {get_house_points('hufflepuff')} \nRavenclaw: {get_house_points('ravenclaw')} \nSlytherin: {get_house_points('slytherin')}"
+            }
+        }
+    ]
+    
     response = client.chat_postMessage(channel=channel_id, blocks=leaderboard)
     ts = response["ts"] # timestamp :P
     time.sleep(30)
     client.chat_delete(channel=channel_id, ts=ts) # delete leaderboard msg after 30 secs :O
+
+def magic_quiz(channel_id, user_id, trigger_id):
+    print(f"sending quiz to {user_id}")
+
+    quiz_blocks = build_quiz(get_quiz(user_id))
+
+    client.views_open(
+        trigger_id=trigger_id,
+        view={
+            "type": "modal",
+            "callback_id": "quiz_modal",
+            "title": {"type": "plain_text", "text": "Quiz Scroll"},
+            "submit": {"type": "plain_text", "text": "Submit Answers"},
+            "close": {"type": "plain_text", "text": "Cancel"},
+            "blocks": quiz_blocks
+        }
+    )
+
+    # response = client.chat_postEphemeral(channel=channel_id, user=user_id, blocks = quiz_blocks)
+
+def build_quiz(questions):
+    blocks = []
+    for i, q in enumerate(questions): # unescape converts text back to norm text
+        question_txt = html.unescape(q["question"])
+        correct = html.unescape(q["correct_answer"])
+        incorrect = [
+            html.unescape(answer) for answer in (q["incorrect_answers"])
+    
+        ]
+
+        all_ans = incorrect + [correct]
+        random.shuffle(all_ans)
+
+        blocks.append({
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"*Question {i+1}:* {question_txt}"
+            }
+        })
+        blocks.append({
+            "type": "actions",
+            "block_id": f"q{i+1}",
+            "elements": [
+                {
+                    "type": "radio_buttons",
+                    "action_id": f"answer_q{i+1}",
+                    "options": [
+                        {
+                            "text": {"type": "plain_text", "text": ans},
+                            "value": ans
+                        } for ans in all_ans
+                    ]
+                }
+            ]
+        })
+    return blocks #omg the error was that this was inside the for and not after BRO
+
+def send_results(user_id, feedback, total_points):
+    result_txt = f"Congratulations! You earned *{total_points} points*! Here are your results...\n\n"
+
+    for i, (qid, correct, expected, actual) in enumerate(feedback):
+        if correct:
+            result_txt += f"Question {i + 1}: Correct! \n"
+        else:
+            result_txt += f"Question {i + 1}: Incorrect... here's the right answer: {expected} \n"
+
+    client.chat_postMessage(
+        channel=user_id,
+        text=result_txt
+    )
+
+
+def score_quiz(user_id, submitted_answers):
+    rows = get_quiz_row(user_id)
+
+    total_points = 0
+    feedback = []
+    i = 1
+
+    for question_id, correct, difficulty in (rows):
+        user_answer = submitted_answers.get(f"q{i}")
+        print(user_answer)
+        is_correct = (user_answer == correct)
+        points = 0
+        if is_correct:
+            if difficulty == "easy":
+                points = 2
+            elif difficulty == "medium":
+                points = 5
+            elif difficulty == "hard":
+                points = 10
+            total_points += points
+            points = 0
+        i+=1
+        
+        feedback.append((question_id, is_correct, correct, user_answer))
+
+
+    return total_points, feedback

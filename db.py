@@ -1,7 +1,8 @@
 # to put all database related functions here (because my bot.py is getting messy)
 
 import sqlite3
-
+import requests
+import html
 
 def init_db():
     conn = sqlite3.connect("hogwarts.db")
@@ -13,6 +14,16 @@ def init_db():
             points INTEGER DEFAULT 0
         )
     """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS quiz_sessions (
+            user_id TEXT,
+            question_id TEXT,
+            correct_answer TEXT,
+            difficulty TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+                   """)
     conn.commit()
     conn.close()
 
@@ -53,6 +64,10 @@ def get_user_points(user_id):
     cursor = conn.cursor()
     cursor.execute("SELECT points FROM users WHERE id = ?", (user_id,))
     result = cursor.fetchone()
+
+    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    testing = cursor.fetchone()
+    print(testing)
     conn.close()
 
     if result:
@@ -74,7 +89,6 @@ def get_user_house(user_id):
     
 def get_house_points(house):
     if house.startswith("("):
-        print(f"could not find house for user {user_id}")
         return "N/A"
 
     conn = sqlite3.connect("hogwarts.db")
@@ -84,3 +98,41 @@ def get_house_points(house):
     conn.close()
 
     return result[0] or 0
+
+def add_points(user_id, points):
+    conn = sqlite3.connect("hogwarts.db")
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET points = points + ? WHERE id = ?", (points, user_id))    
+    print(f"added {points} to user")
+    conn.commit()
+    conn.close()
+
+def get_quiz(user_id):
+    conn = sqlite3.connect("hogwarts.db")
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM quiz_sessions WHERE user_id = ?", (user_id,))
+
+    response = requests.get("https://opentdb.com/api.php?amount=5&type=multiple")
+
+    
+    for q in response.json()["results"]:
+        question_id = q["question"]
+        correct = html.unescape(q["correct_answer"])
+        difficulty = q["difficulty"]
+        cursor.execute("""
+            INSERT INTO quiz_sessions (user_id, question_id, correct_answer, difficulty)
+            VALUES (?, ?, ?, ?)
+        """, (user_id, question_id, correct, difficulty))
+    conn.commit()
+    conn.close()
+
+
+    return response.json()["results"]
+
+def get_quiz_row(user_id):
+    conn = sqlite3.connect("hogwarts.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT question_id, correct_answer, difficulty FROM quiz_sessions WHERE user_id = ?", (user_id,))
+    rows = cursor.fetchall()
+    return rows

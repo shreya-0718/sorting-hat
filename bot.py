@@ -10,8 +10,9 @@ from slack_sdk.errors import SlackApiError
 import threading
 
 from core import env_path, client, slack_event_adapter, app, BOT_ID
-from db import init_db, assign_to_house, print_all_assignments, get_user_house
-from hogwarts import send_house_buttons, add_user_to_house, own_points, house_points, send_leaderboard
+from db import init_db, assign_to_house, print_all_assignments, get_user_house, add_points
+from hogwarts import send_house_buttons, add_user_to_house, own_points, house_points, send_leaderboard, magic_quiz
+from hogwarts import send_results, score_quiz
 import requests
 
 # note to self: ngrok http 5000
@@ -64,7 +65,7 @@ def my_points():
     return Response(), 200
 
 @app.route('/house-points', methods=['POST'])
-def house_points():
+def check_house_points():
     data = request.form
     user_id = data.get('user_id')
     channel_id = data.get('channel_id')
@@ -104,20 +105,49 @@ def message(payLoad):
         client.chat_postMessage(channel=channel_id, text=text) # error before: private channel so groups not channel
 """
 
+@app.route('/quiz', methods=['POST'])
+def quiz():
+    data = request.form
+    user_id = data.get('user_id')
+    channel_id = data.get('channel_id')
+    trigger_id = data.get("trigger_id")
+
+    threading.Thread(target=magic_quiz, args=(channel_id, user_id, trigger_id)).start()
+    return Response(), 200
+
+
 @app.route('/slack/interactions', methods=['POST'])
 def handle_interactions():
     payload = json.loads(request.form["payload"])
     interaction_type = payload.get("type")
 
-    if interaction_type == "block_actions":
-        return handle_block_actions(payload)
+    if payload["type"] == "view_submission":
+        user_id = payload["user"]["id"]
+        submitted_answers = extract_answers(payload)
 
-    # will add more types later
+        print("quiz submitted we know we know")
+
+        total_points, feedback = score_quiz(user_id, submitted_answers)
+        send_results(user_id, feedback, total_points)
+        add_points(user_id, total_points)
+        
+        return "", 200
+    
+    if interaction_type == "block_actions":
+        action = payload["actions"][0]
+        
+        if action.get("type") == "radio_buttons":
+            print("answer clicked")
+            return "", 200
+
+        else:
+            return choose_house_block(payload)
+
     else:
         print(f"Unknown interaction type: {interaction_type}")
         return "", 200
     
-def handle_block_actions(payload):
+def choose_house_block(payload):
     action = payload["actions"][0]
     value = action["value"]  
     channel_id = payload["channel"]["id"]
@@ -133,6 +163,20 @@ def handle_block_actions(payload):
     delete_buttons(response_url, house)
 
     return "", 200
+
+def extract_answers(payload):
+    answers = {}
+    state_values = payload["view"]["state"]["values"]
+
+    # dict = dictionary. action_dict contains my selected answer
+    for block_id, action_dict in state_values.items():
+        for action_id, answer_data in action_dict.items():
+            answers[block_id] = answer_data["selected_option"]["value"]
+    
+    print(answers)
+    return answers
+    
+    #basically just takes all the answers the user submitted
 
 if __name__ == "__main__": 
     app.run(debug=True)
