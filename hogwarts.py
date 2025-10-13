@@ -276,3 +276,23 @@ def add_to_secret(user_id, channel_id, secret_channel):
             user=user_id,
             text="Here, you can talk about whatever you like with other fellow witches and wizards!"
         )
+
+def remove_from_secret(user_id, channel_id, secret_channel):
+    if user_id in client.conversations_members(channel=secret_channel)["members"]:
+        client.chat_postEphemeral(
+            channel=channel_id,
+            user=user_id,
+            text=f"The door creaks shut and locks behind you as you step out of the common room. \nFarewell! We'll miss your magic! "
+        )
+
+        client.conversations_kick(
+            channel=secret_channel,
+            user=user_id
+        )
+    
+    else:
+        client.chat_postEphemeral(
+            channel=channel_id,
+            user=user_id,
+            text=f"Vanish??? From where???"
+        )
