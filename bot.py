@@ -139,6 +139,21 @@ def colloportus():
 
     return Response(), 200
 
+@app.route('/obscuro', methods=['POST'])
+def obscuro():
+    data = request.form
+    channel_id = data.get('channel_id')
+    print("channellll:"+ channel_id)
+    user_id = data.get('user_id')
+    spoiler = data.get('text')
+
+    response = client.chat_postMessage(channel=channel_id, text=f"Spoiler sent by <@{user_id}> has been hidden... \nClick thread to open, but beware!")
+    ts = response["ts"] 
+
+    client.chat_postMessage(channel=channel_id, thread_ts=ts, text=f"Reveal: {spoiler}")
+
+    return Response(), 200
+
 
 @app.route('/slack/interactions', methods=['POST'])
 def handle_interactions():

@@ -145,5 +145,6 @@ hogwarts.db
 ngrok.exe
 __pycache__/
 *.pyc
+__pycache__/core.cpython-310.pyc
 
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Python
