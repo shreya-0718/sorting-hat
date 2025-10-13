@@ -275,7 +275,7 @@ def add_to_secret(user_id, channel_id, secret_channel):
             channel=secret_channel,
             user=user_id,
             text="Here, you can talk about whatever you like with other fellow witches and wizards!"
-        )
+        ) #testing the commit
 
 def remove_from_secret(user_id, channel_id, secret_channel):
     if user_id in client.conversations_members(channel=secret_channel)["members"]:
