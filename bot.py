@@ -12,8 +12,8 @@ import threading
 from core import env_path, client, slack_event_adapter, app, BOT_ID
 from db import init_db, assign_to_house, print_all_assignments, get_user_house, add_points
 from hogwarts import send_house_buttons, add_user_to_house, own_points, house_points, send_leaderboard, magic_quiz
-from hogwarts import send_results, score_quiz
-import requests
+from hogwarts import send_results, score_quiz, add_to_secret
+import requests, time
 
 # note to self: ngrok http 5000
 
@@ -113,6 +113,18 @@ def quiz():
     trigger_id = data.get("trigger_id")
 
     threading.Thread(target=magic_quiz, args=(channel_id, user_id, trigger_id)).start()
+    return Response(), 200
+
+@app.route('/alohomora', methods=['POST'])
+def alohomora():
+
+    data = request.form
+    user_id = data.get('user_id')
+    channel_id = data.get('channel_id')
+    secret_channel = os.environ.get("SECRET_CHANNEL_ID")
+
+    threading.Thread(target=add_to_secret, args=(user_id, channel_id, secret_channel)).start()
+
     return Response(), 200
 
 

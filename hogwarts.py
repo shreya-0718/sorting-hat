@@ -140,7 +140,7 @@ def send_leaderboard(channel_id):
             }
         }
     ]
-    
+
     response = client.chat_postMessage(channel=channel_id, blocks=leaderboard)
     ts = response["ts"] # timestamp :P
     time.sleep(30)
@@ -245,3 +245,34 @@ def score_quiz(user_id, submitted_answers):
 
 
     return total_points, feedback
+
+def add_to_secret(user_id, channel_id, secret_channel):
+    if user_id in client.conversations_members(channel=secret_channel)["members"]:
+        client.chat_postEphemeral(
+            channel=channel_id,
+            user=user_id,
+            text=f"You are already in <#{secret_channel}>!"
+        )
+
+    else:
+        client.conversations_invite(
+            channel=secret_channel,
+            users=user_id     
+        )
+
+        client.chat_postEphemeral(
+            channel=channel_id,
+            user=user_id,
+            text=f"Congratulations! You have now joined <#{secret_channel}>.\nYou can leave at any time :)"
+        )
+
+        client.chat_postMessage(
+            channel = secret_channel,
+            text = f"Welcome to the Common Room, <@{user_id}>!"
+        )
+
+        client.chat_postEphemeral(
+            channel=secret_channel,
+            user=user_id,
+            text="Here, you can talk about whatever you like with other fellow witches and wizards!"
+        )
