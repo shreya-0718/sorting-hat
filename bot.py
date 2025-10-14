@@ -12,7 +12,7 @@ import threading
 from core import env_path, client, slack_event_adapter, app, BOT_ID
 from db import init_db, assign_to_house, print_all_assignments, get_user_house, add_points
 from hogwarts import send_house_buttons, add_user_to_house, own_points, house_points, send_leaderboard, magic_quiz
-from hogwarts import send_results, score_quiz, add_to_secret, remove_from_secret
+from hogwarts import send_results, score_quiz, add_to_secret, remove_from_secret, react_with_house, react_with_heart
 import requests, time
 
 # note to self: ngrok http 5000
@@ -91,7 +91,7 @@ def housepoints():
     threading.Thread(target=house_points, args=(channel_id, user_id)).start()
     return Response(), 200
 
-"""
+
 @slack_event_adapter.on('message')
 def message(payLoad):
     event = payLoad.get('event', {})
@@ -100,10 +100,22 @@ def message(payLoad):
     channel_id = event.get('channel')
     user_id = event.get('user')
     text = event.get('text')
+    ts = event.get('ts')
 
-    if BOT_ID != user_id:
-        client.chat_postMessage(channel=channel_id, text=text) # error before: private channel so groups not channel
-"""
+    if text and (BOT_ID != user_id) and ("house" in text.lower()):
+        react_with_house(channel_id, user_id, ts)
+
+    if (BOT_ID != user_id):
+        if ("gryffindor" in text.lower()):
+            react_with_heart(channel_id, ts, "red")
+        if ("hufflepuff" in text.lower()):
+            react_with_heart(channel_id, ts, "yellow")
+        if ("ravenclaw" in text.lower()):
+            react_with_heart(channel_id, ts, "blue")
+        if ("slytherin" in text.lower()):
+            react_with_heart(channel_id, ts, "green")
+
+    return Response(), 200
 
 @app.route('/quiz', methods=['POST'])
 def quiz():
@@ -155,7 +167,6 @@ def obscuro():
     client.chat_postMessage(channel=channel_id, thread_ts=ts, text=f"Reveal: {spoiler}")
 
     return Response(), 200
-
 
 @app.route('/slack/interactions', methods=['POST'])
 def handle_interactions():

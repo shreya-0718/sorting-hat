@@ -141,9 +141,20 @@ def send_leaderboard(channel_id):
         }
     ]
 
+    houses = ["gryffindor", "hufflepuff", "ravenclaw", "slytherin"]
+    points = {house: get_house_points(house) for house in houses}
+    winner_house = max(points, key=points.get)
+
     response = client.chat_postMessage(channel=channel_id, blocks=leaderboard)
     ts = response["ts"] # timestamp :P
+
+    
+    client.reactions_add(name='trophy', channel=channel_id, timestamp=ts)
+    react_with_heart(channel_id, ts, get_house_color(winner_house))
+
     time.sleep(30)
+
+
     client.chat_delete(channel=channel_id, ts=ts) # delete leaderboard msg after 30 secs :O
 
 def magic_quiz(channel_id, user_id, trigger_id):
@@ -296,3 +307,22 @@ def remove_from_secret(user_id, channel_id, secret_channel):
             user=user_id,
             text=f"Vanish??? From where???"
         )
+
+def react_with_house(channel_id, user_id, ts):
+    house = get_user_house(user_id)
+
+    if house[0] != '(':
+        client.reactions_add(name=house, channel=channel_id, timestamp=ts)
+
+def react_with_heart(channel_id, ts, color):
+    client.reactions_add(name=f"ms-{color}-heart", channel=channel_id, timestamp=ts)
+
+def get_house_color(house):
+    if house.lower() == "gryffindor":
+        return "red"
+    elif house.lower() == "hufflepuff":
+        return "yellow"
+    elif house.lower() == "ravenclaw":
+        return "blue"
+    elif house.lower() == "slytherin":
+        return "green"
