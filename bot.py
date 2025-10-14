@@ -105,7 +105,7 @@ def message(payLoad):
     if text and (BOT_ID != user_id) and ("house" in text.lower()):
         react_with_house(channel_id, user_id, ts)
 
-    if (BOT_ID != user_id):
+    if text and (BOT_ID != user_id):
         if ("gryffindor" in text.lower()):
             react_with_heart(channel_id, ts, "red")
         if ("hufflepuff" in text.lower()):
