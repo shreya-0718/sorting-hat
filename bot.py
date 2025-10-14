@@ -150,6 +150,8 @@ def obscuro():
     response = client.chat_postMessage(channel=channel_id, text=f"Spoiler sent by <@{user_id}> has been hidden... \nClick thread to open, but beware!")
     ts = response["ts"] 
 
+    client.reactions_add(name="speak_no_evil", channel=channel_id, timestamp=ts)
+
     client.chat_postMessage(channel=channel_id, thread_ts=ts, text=f"Reveal: {spoiler}")
 
     return Response(), 200
