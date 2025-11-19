@@ -1,4 +1,3 @@
-import slack
 import os
 import math
 import random
@@ -16,8 +15,6 @@ from hogwarts import send_results, score_quiz, add_to_secret, remove_from_secret
 import requests, time
 
 # note to self: ngrok http 5000
-
-# setup stuff:
 
 init_db()
 
